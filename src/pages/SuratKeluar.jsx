@@ -3,13 +3,13 @@ import { Edit, Trash2 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+import 'react-quill/dist/quill.snow.css';
 
 const formatTanggal = (tanggalString) => {
-  if (!tanggalString) return "";
+  if (!tanggalString) return '';
   const tanggal = new Date(tanggalString);
-  const options = { day: "numeric", month: "long", year: "numeric" };
-  return tanggal.toLocaleDateString("id-ID", options);
+  const options = { day: 'numeric', month: 'long', year: 'numeric' };
+  return tanggal.toLocaleDateString('id-ID', options);
 };
 
 const SuratKeluarPage = () => {
@@ -18,14 +18,14 @@ const SuratKeluarPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({
-    tanggal: "",
-    noSurat: "",
-    lampiran: "",
-    sifat: "",
-    kepada: "",
-    perihal: "",
-    tembusan: "",
-    isiSurat: "",
+    tanggal: '',
+    noSurat: '',
+    lampiran: '',
+    sifat: '',
+    kepada: '',
+    perihal: '',
+    tembusan: '',
+    isiSurat: ''
   });
   const [editIndex, setEditIndex] = useState(null);
 
@@ -76,21 +76,17 @@ const SuratKeluarPage = () => {
     setShowForm(!showForm);
     setEditIndex(null);
     setFormData({
-      tanggal: "",
-      noSurat: "",
-      lampiran: "",
-      sifat: "",
-      kepada: "",
-      perihal: "",
-      tembusan: "",
-      isiSurat: "",
+      tanggal: '',
+      noSurat: '',
+      lampiran: '',
+      sifat: '',
+      kepada: '',
+      perihal: '',
+      tembusan: '',
+      isiSurat: ''
     });
   };
-
-  const handlePreview = () => {
-    setShowPreview(true);
-  };
-
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     if (editIndex !== null) {
@@ -99,31 +95,39 @@ const SuratKeluarPage = () => {
       setSuratKeluar(updatedData);
       setEditIndex(null);
     } else {
-      setSuratKeluar([...suratKeluar, { ...formData, status: "Dikirim" }]);
+      const newSuratKeluar = { ...formData, status: "Dikirim" };
+      setSuratKeluar((prevData) => [...prevData, newSuratKeluar]); // Tambahkan data baru ke suratKeluar
     }
-
+  
+    console.log(formData); // Periksa data form yang terkirim
+  
+    // Tampilkan pratinjau setelah data disimpan
+    setShowPreview(true);
     setShowForm(false);
+  
+    // Reset formData untuk mengosongkan form
     setFormData({
-      tanggal: "",
-      noSurat: "",
-      lampiran: "",
-      sifat: "",
-      kepada: "",
-      perihal: "",
-      tembusan: "",
-      isiSurat: "",
+      tanggal: '',
+      noSurat: '',
+      lampiran: '',
+      sifat: '',
+      kepada: '',
+      perihal: '',
+      tembusan: '',
+      isiSurat: ''
     });
   };
+  
 
   const handleExportPDF = () => {
     const input = previewRef.current;
     html2canvas(input).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
       const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save("surat-keluar.pdf");
     });
   };
@@ -148,7 +152,7 @@ const SuratKeluarPage = () => {
             </button>
           </div>
         </div>
-
+  
         <div
           ref={previewRef}
           className="p-10 mx-auto bg-white border border-gray-300"
@@ -161,28 +165,23 @@ const SuratKeluarPage = () => {
         >
           {/* HEADER */}
           <div className="relative mb-2 text-center">
-            {/* LOGO */}
             <img
               src="/Logo.png"
               alt="Logo"
               className="absolute top-0 left-0 w-16 h-16"
             />
-            <p className="text-lg font-normal uppercase">
-              Pemerintah Kabupaten Purbalingga
-            </p>
+            <p className="text-lg font-normal uppercase">Pemerintah Kabupaten Purbalingga</p>
             <p className="text-lg font-bold uppercase">Kecamatan Bojongsari</p>
-            <p className="text-sm">
-              Jalan Kutabaru I Nomor 1 Telp.(0281) 6597070
-            </p>
+            <p className="text-sm">Jalan Kutabaru I Nomor 1 Telp.(0281) 6597070</p>
             <p className="text-sm uppercase">Bojongsari - Purbalingga</p>
           </div>
           <div className="my-2 border-t-4 border-b-2 border-black"></div>
-
+  
           {/* TANGGAL */}
           <div className="mt-4 mb-2 text-right">
             <p>Bojongsari, {formatTanggal(formData.tanggal)}</p>
           </div>
-
+  
           {/* INFORMASI SURAT */}
           <div>
             <table className="mb-4 text-sm">
@@ -195,12 +194,12 @@ const SuratKeluarPage = () => {
                 <tr>
                   <td>Lampiran</td>
                   <td>:</td>
-                  <td>{formData.lampiran || "-"}</td>
+                  <td>{formData.lampiran || '-'}</td>
                 </tr>
                 <tr>
                   <td>Sifat</td>
                   <td>:</td>
-                  <td>{formData.sifat || "-"}</td>
+                  <td>{formData.sifat || '-'}</td>
                 </tr>
                 <tr>
                   <td>Perihal</td>
@@ -209,46 +208,37 @@ const SuratKeluarPage = () => {
                 </tr>
               </tbody>
             </table>
-
+  
             {/* KEPADA */}
-            <p className="mt-1">Kepada Yth.</p>
-            <div className="mt-4 ml-4 whitespace-pre-line">
-              {formData.kepada}
-            </div>
-
+            <p className="mt-4">Kepada Yth.</p>
+            <div className="mt-6 ml-6 whitespace-pre-line">{formData.kepada}</div>
+  
             {/* ISI SURAT */}
             <div
               className="mt-6 ml-6 text-justify"
               dangerouslySetInnerHTML={{ __html: formData.isiSurat }}
             />
-
+  
             {/* PENUTUP */}
             <p className="mt-4 ml-6 text-justify">
-              Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya
-              kami ucapkan terima kasih.
+              Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya kami ucapkan terima kasih.
             </p>
-
+  
             {/* TTD */}
             <div className="pr-2 mt-8 text-right">
               <div className="inline-block float-right text-center">
                 <p className="mb-16">CAMAT BOJONGSARI</p>
-                <p className="font-semibold underline">
-                  TRI WAHYU DINI SUSANTI, S.STP.
-                </p>
+                <p className="font-semibold underline">TRI WAHYU DINI SUSANTI, S.STP.</p>
                 <p className="text-center">Pembina</p>
                 <p className="text-center">NIP. 19820322 200012 2 002</p>
               </div>
             </div>
-
+  
             {/* TEMBUSAN */}
             {formData.tembusan && (
               <div className="mt-8">
-                <p>
-                  <strong>Tembusan:</strong>
-                </p>
-                <div className="ml-6 whitespace-pre-line">
-                  {formData.tembusan}
-                </div>
+                <p><strong>Tembusan:</strong></p>
+                <div className="ml-6 whitespace-pre-line">{formData.tembusan}</div>
               </div>
             )}
           </div>
@@ -256,21 +246,18 @@ const SuratKeluarPage = () => {
       </div>
     );
   };
-
+  
+  
+  
   return (
     <div className="p-4">
       <div className="p-4 bg-white rounded shadow-md">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-semibold">Data Surat Keluar</h1>
-            <p className="text-sm text-gray-500">
-              KECAMATAN BOJONGSARI KABUPATEN PURBALINGGA
-            </p>
+            <p className="text-sm text-gray-500">KECAMATAN BOJONGSARI KABUPATEN PURBALINGGA</p>
           </div>
-          <button
-            onClick={toggleForm}
-            className="px-4 py-2 text-white bg-green-500 rounded hover:bg-green-600"
-          >
+          <button onClick={toggleForm} className="px-4 py-2 text-white bg-green-500 rounded hover:bg-green-600">
             + Tambah
           </button>
         </div>
@@ -373,17 +360,13 @@ const SuratKeluarPage = () => {
                 </div>
 
                 <div className="flex justify-end mt-4">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
-                  >
+                  <button type="submit" className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600">
                     Simpan
                   </button>
                   <button
                     type="button"
                     onClick={toggleForm}
-                    className="px-4 py-2 ml-2 text-gray-700 bg-gray-300 rounded hover:bg-gray-400"
-                  >
+                    className="px-4 py-2 ml-2 text-gray-700 bg-gray-300 rounded hover:bg-gray-400">
                     Tutup
                   </button>
                 </div>

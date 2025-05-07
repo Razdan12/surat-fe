@@ -22,6 +22,7 @@ const SuratMasukPage = () => {
       file: null,
     },
   ]);
+  const [disposisi, setDisposisi] = useState([]);
 
   const [showForm, setShowForm] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
@@ -54,14 +55,27 @@ const SuratMasukPage = () => {
         return;
       }
     }
-
+  
     const newSurat = {
       id: suratMasuk.length + 1,
       ...formData,
       fileUrl: formData.file ? URL.createObjectURL(formData.file) : null,
     };
-
+  
     setSuratMasuk([...suratMasuk, newSurat]);
+  
+    // Tambahkan otomatis ke disposisi
+    const newDisposisi = {
+      id: disposisi.length + 1,
+      suratId: newSurat.id,
+      noAgenda: newSurat.noAgenda,
+      instansi: newSurat.instansi,
+      perihal: newSurat.perihal,
+      status: "Belum diproses",
+    };
+    setDisposisi([...disposisi, newDisposisi]);
+  
+    // Reset form
     setFormData({
       noSurat: "",
       tglSurat: "",
@@ -75,11 +89,12 @@ const SuratMasukPage = () => {
       sifat: "",
       file: null,
     });
+  
     setShowForm(false);
     setShowNotif(true);
     setTimeout(() => setShowNotif(false), 3000);
   };
-
+  
   const handleEdit = (id) => {
     const suratToEdit = suratMasuk.find((item) => item.id === id);
     setFormData(suratToEdit);
