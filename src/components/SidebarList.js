@@ -13,17 +13,17 @@ export const sidebarList = [
     permission: [],
   },
   {
-    label: "Letter Management",
+    label: "Persuratan",
     path: "",
     icon: "GoTasklist",
     subLabel: [
       {
-        label: "Incoming Letters",
+        label: "Surat Masuk",
         path: "/surat-masuk",
         permission: [],
       },
       {
-        label: "Outcoming Letters",
+        label: "Surat Keluar",
         path: "/surat-keluar",
         permission: [],
       },
@@ -32,15 +32,15 @@ export const sidebarList = [
   },
 
   {
-    label: "Disposition List",
+    label: "Disposisi",
     path: "/disposisi-surat-masuk",
     icon: "GoTasklist",
     subLabel: [],
     permission: [],
   },
   {
-    label: "Report",
-    path: "/disposisi-surat-masuk",
+    label: "Laporan",
+    path: "/laporan-surat",
     icon: "GoTasklist",
     subLabel: [],
     permission: [],

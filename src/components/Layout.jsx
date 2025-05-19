@@ -6,7 +6,7 @@ import Navbar from "./Navbars";
 const Layout = () => {
   return (
     <div className="flex h-full bg-base-200">
-      <div className="flex-shrink-0 h-full z-50">
+      <div className="z-50 flex-shrink-0 h-full">
         <Sidebar />
       </div>
       <div className="flex flex-col w-full h-full">

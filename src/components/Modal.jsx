@@ -16,7 +16,7 @@ const closeModal = (id, fun) => {
   }
 };
 
-const Modal = ({ id, children, width, onClose = () => {} }) => {
+const Modal = ({ id, children, width, onClose = () => { } }) => {
   return (
     <div>
       <dialog id={id} onClose={onClose} className="modal modal-middle">

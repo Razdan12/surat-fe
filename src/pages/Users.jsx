@@ -101,13 +101,13 @@ const Users = () => {
   };
 
   return (
-    <div className="flex flex-col p-3 h-screen">
+    <div className="flex flex-col h-screen p-3">
       <div>
         <h2 className="text-2xl font-bold">Data Pengguna</h2>
         <p className="text-sm text-gray-500">Manajemen data pengguna sistem</p>
       </div>
-      <div className="flex flex-col mt-4 w-full">
-        <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col w-full mt-4">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <label className="mr-2 text-sm font-medium">Show</label>
             <select
@@ -127,7 +127,7 @@ const Users = () => {
             <input
               type="text"
               placeholder="Search..."
-              className="input input-bordered w-full max-w-xs mr-2"
+              className="w-full max-w-xs mr-2 input input-bordered"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -141,7 +141,7 @@ const Users = () => {
         </div>
         <div className="overflow-x-auto">
           <table className="table table-zebra">
-            <thead className="bg-blue-500 text-white">
+            <thead className="text-white bg-blue-500">
               <tr>
                 <th>No</th>
                 <th>NIP</th>
@@ -163,8 +163,8 @@ const Users = () => {
                   <td>{user.role}</td>
 
                   <td>
-                  <button
-                      className="btn btn-sm btn-btn-ghost text-xl text-orange-500"
+                    <button
+                      className="text-xl text-orange-500 btn btn-sm btn-btn-ghost"
                       onClick={() => {
                         openModal("edit-user");
                         const form = document.querySelector(`#edit-user form`);
@@ -177,18 +177,18 @@ const Users = () => {
                       <FaEdit />
                     </button>
                     <button
-                      className="btn btn-sm btn-ghost text-xl text-red-500"
+                      className="text-xl text-red-500 btn btn-sm btn-ghost"
                       onClick={() => trigerDelete(user.id)}
                     >
                       <FaTrash />
                     </button>
-                   
+
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="flex w-full justify-end mt-4">
+          <div className="flex justify-end w-full mt-4">
             <Pagination
               page={currentPage}
               totalPages={totalPages}
@@ -216,7 +216,7 @@ const Users = () => {
                   <input
                     name="name"
                     type="text"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -225,7 +225,7 @@ const Users = () => {
                   <input
                     name="email"
                     type="email"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -234,7 +234,7 @@ const Users = () => {
                   <input
                     name="password"
                     type="password"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -243,7 +243,7 @@ const Users = () => {
                   <input
                     name="nip"
                     type="number"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -251,7 +251,7 @@ const Users = () => {
                   <label className="label">Role</label>
                   <select
                     name="role"
-                    className="select select-bordered w-full"
+                    className="w-full select select-bordered"
                     required
                   >
                     <option value="User">User</option>
@@ -262,7 +262,7 @@ const Users = () => {
                   <label className="label">Jenis Kelamin</label>
                   <select
                     name="jenisKelamin"
-                    className="select select-bordered w-full"
+                    className="w-full select select-bordered"
                     required
                   >
                     <option value="Laki-laki">Laki-laki</option>
@@ -274,7 +274,7 @@ const Users = () => {
                   <input
                     name="jabatan"
                     type="text"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -283,7 +283,7 @@ const Users = () => {
                   <input
                     name="tempatLahir"
                     type="text"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -292,7 +292,7 @@ const Users = () => {
                   <input
                     name="tanggalLahir"
                     type="date"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -301,7 +301,7 @@ const Users = () => {
                   <input
                     name="telepon"
                     type="number"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -309,7 +309,7 @@ const Users = () => {
                   <label className="label">Status</label>
                   <select
                     name="status"
-                    className="select select-bordered w-full"
+                    className="w-full select select-bordered"
                     required
                   >
                     <option value={true}>Aktif</option>
@@ -320,12 +320,12 @@ const Users = () => {
                   <label className="label">Alamat</label>
                   <textarea
                     name="alamat"
-                    className="textarea textarea-bordered w-full"
+                    className="w-full textarea textarea-bordered"
                     required
                   ></textarea>
                 </div>
               </div>
-              <div className="mt-4 flex justify-end">
+              <div className="flex justify-end mt-4">
                 <button type="submit" className="btn btn-primary">
                   Simpan
                 </button>
@@ -354,7 +354,7 @@ const Users = () => {
                   <input
                     name="name"
                     type="text"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -363,7 +363,7 @@ const Users = () => {
                   <input
                     name="email"
                     type="email"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -372,7 +372,7 @@ const Users = () => {
                   <input
                     name="nip"
                     type="number"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -380,7 +380,7 @@ const Users = () => {
                   <label className="label">Role</label>
                   <select
                     name="role"
-                    className="select select-bordered w-full"
+                    className="w-full select select-bordered"
                     required
                   >
                     <option value="User">User</option>
@@ -391,7 +391,7 @@ const Users = () => {
                   <label className="label">Jenis Kelamin</label>
                   <select
                     name="jenisKelamin"
-                    className="select select-bordered w-full"
+                    className="w-full select select-bordered"
                     required
                   >
                     <option value="Laki-laki">Laki-laki</option>
@@ -403,7 +403,7 @@ const Users = () => {
                   <input
                     name="jabatan"
                     type="text"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -412,7 +412,7 @@ const Users = () => {
                   <input
                     name="tempatLahir"
                     type="text"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -421,7 +421,7 @@ const Users = () => {
                   <input
                     name="tanggalLahir"
                     type="date"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -430,7 +430,7 @@ const Users = () => {
                   <input
                     name="telepon"
                     type="number"
-                    className="input input-bordered w-full"
+                    className="w-full input input-bordered"
                     required
                   />
                 </div>
@@ -438,7 +438,7 @@ const Users = () => {
                   <label className="label">Status</label>
                   <select
                     name="status"
-                    className="select select-bordered w-full"
+                    className="w-full select select-bordered"
                     required
                   >
                     <option value={true}>Aktif</option>
@@ -449,12 +449,12 @@ const Users = () => {
                   <label className="label">Alamat</label>
                   <textarea
                     name="alamat"
-                    className="textarea textarea-bordered w-full"
+                    className="w-full textarea textarea-bordered"
                     required
                   ></textarea>
                 </div>
               </div>
-              <div className="mt-4 flex justify-end">
+              <div className="flex justify-end mt-4">
                 <button type="submit" className="btn btn-primary">
                   Simpan
                 </button>

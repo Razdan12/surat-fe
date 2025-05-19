@@ -1,103 +1,345 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // ← Tambahkan ini
+import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-// Data Sampel
-const sampleSuratMasuk = [
-  { id: 1, jenis: "Masuk", nomor: "001", tanggal: "2025-05-01", pengirim: "Dinas Pendidikan", perihal: "Undangan Rapat" },
-  { id: 2, jenis: "Masuk", nomor: "002", tanggal: "2025-05-02", pengirim: "Dinas Kesehatan", perihal: "Sosialisasi Kesehatan" },
-];
-
-const sampleSuratKeluar = [
-  { id: 3, jenis: "Keluar", nomor: "101", tanggal: "2025-05-01", penerima: "Camat", perihal: "Laporan Bulanan" },
-  { id: 4, jenis: "Keluar", nomor: "102", tanggal: "2025-05-02", penerima: "Dinas Kesehatan", perihal: "Permohonan Bantuan" },
-];
-
-const sampleDisposisi = [
-  { suratId: 1, tujuan: "Sekretaris", isi: "Segera ditindaklanjuti", tanggal: "2025-05-01" },
-  { suratId: 2, tujuan: "Kasi Pelayanan", isi: "Mohon dijawab", tanggal: "2025-05-02" },
-];
+import Pagination from "../components/Pagination";
+import { getLaporanSuratAPI } from "../middleware/Laporan";
+import Swal from "sweetalert2";
 
 const LaporanSuratPage = () => {
   const [search, setSearch] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedSuratId, setSelectedSuratId] = useState(null);
-  const navigate = useNavigate();
-  const allData = [...sampleSuratMasuk, ...sampleSuratKeluar];
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [suratData, setSuratData] = useState([]);
+  const [selectedSurat, setSelectedSurat] = useState(null);
 
-  const filteredData = allData.filter((item) => {
-    const searchLower = search.toLowerCase();
+  // Tambahkan state filter jenis surat
+  const [filterJenisSurat, setFilterJenisSurat] = useState("all"); // 'all', 'masuk', 'keluar'
 
-    const matchSearch =
-      item.nomor?.toLowerCase().includes(searchLower) ||
-      item.perihal?.toLowerCase().includes(searchLower) ||
-      item.pengirim?.toLowerCase().includes(searchLower) ||
-      item.penerima?.toLowerCase().includes(searchLower);
+  useEffect(() => {
+    fetchLaporanSurat();
+  }, [search, startDate, endDate, currentPage, itemsPerPage]);
 
-    const itemDate = dayjs(item.tanggal);
-    const validStart = startDate ? dayjs(startDate).isValid() : false;
-    const validEnd = endDate ? dayjs(endDate).isValid() : false;
+  useEffect(() => {
+    if (selectedSuratId) {
+      const surat = suratData.find(s => s.noSurat === selectedSuratId);
+      if (surat) {
+        setSelectedSurat(surat);
+      }
+    }
+  }, [selectedSuratId, suratData]);
 
-    const matchStart = validStart ? itemDate.isAfter(dayjs(startDate).subtract(1, "day")) : true;
-    const matchEnd = validEnd ? itemDate.isBefore(dayjs(endDate).add(1, "day")) : true;
+  const fetchLaporanSurat = async () => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams({
+        limit: itemsPerPage,
+        page: currentPage,
+        search: search,
+        startDate: startDate ? dayjs(startDate).toISOString() : '',
+        endDate: endDate ? dayjs(endDate).toISOString() : ''
+      });
 
-    return matchSearch && matchStart && matchEnd;
-  });
+      const response = await getLaporanSuratAPI(queryParams.toString());
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Laporan Surat Masuk & Keluar", 14, 10);
+      if (response?.data) {
+        setSuratData(response.data);
+        setTotalPages(Math.ceil(response.data.length / itemsPerPage));
+      } else {
+        setSuratData([]);
+        setTotalPages(0);
+        Swal.fire("Info", "Tidak ada data surat yang ditemukan", "info");
+      }
+    } catch (error) {
+      console.error("Error fetching laporan:", error);
+      const errorData = error.response?.data;
 
-    autoTable(doc, {
-      head: [["No", "Jenis", "Nomor", "Tanggal", "Pengirim/Penerima", "Perihal"]],
-      body: filteredData.map((item, index) => [
-        index + 1,
-        item.jenis,
-        item.nomor,
-        item.tanggal,
-        item.pengirim || item.penerima || "-",
-        item.perihal,
-      ]),
-      startY: 20,
-    });
+      if (errorData?.errors?.error?.code === 'Unauthenticated') {
+        return;
+      } else {
+        Swal.fire("Info", "Data tidak ditemukan", "info");
+      }
 
-    doc.save("laporan-surat.pdf");
+      setSuratData([]);
+      setTotalPages(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Fungsi untuk filter data berdasarkan filterJenisSurat
+  const getFilteredSuratData = () => {
+    if (filterJenisSurat === "all") {
+      return suratData;
+    }
+    if (filterJenisSurat === "masuk") {
+      return suratData.filter(item => item.type === "masuk");
+    }
+    if (filterJenisSurat === "keluar") {
+      return suratData.filter(item => item.type === "keluar");
+    }
+    return suratData;
+  };
+
+  const handleExportPDF = () => {
+    const filteredData = getFilteredSuratData();
+    const doc = new jsPDF("p", "mm", "a4");
+
+    // Tambahkan logo (gunakan base64 image jika perlu)
+    const logoImg = new Image();
+    logoImg.src = "/Logo.png"; // Gunakan path relatif jika memungkinkan
+
+    logoImg.onload = () => {
+      doc.addImage(logoImg, "PNG", 15, 10, 25, 25); // (img, type, x, y, width, height)
+
+      // Tambahkan teks kop surat
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("PEMERINTAH KABUPATEN PURBALINGGA", 105, 15, { align: "center" });
+
+      doc.setFontSize(13);
+      doc.text("KECAMATAN BOJONGSARI", 105, 22, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text("Jalan Kutabaru I Nomor 1 Telp. (0281) 6597070", 105, 28, { align: "center" });
+      doc.text("BOJONGSARI - PURBALINGGA", 105, 33, { align: "center" });
+
+      // Garis pembatas
+      doc.setLineWidth(0.5);
+      doc.line(15, 38, 195, 38);
+
+      // Judul laporan
+      let title = "Laporan Surat ";
+      if (filterJenisSurat === "all") title += "Masuk & Keluar";
+      else if (filterJenisSurat === "masuk") title += "Masuk";
+      else if (filterJenisSurat === "keluar") title += "Keluar";
+
+      doc.setFontSize(12);
+      doc.text(title, 105, 46, { align: "center" });
+
+      // Table data
+      autoTable(doc, {
+        startY: 52,
+        head: [["No", "Jenis", "Nomor", "Tanggal", "Pengirim/Penerima", "Perihal"]],
+        body: filteredData.map((item, index) => [
+          index + 1,
+          item.type === 'masuk' ? 'Surat Masuk' : 'Surat Keluar',
+          item.noSurat,
+          dayjs(item.tglSurat).format("YYYY-MM-DD"),
+          item.type === 'masuk' ? item.pengirim : item.tujuan,
+          item.perihal,
+        ]),
+        styles: {
+          fontSize: 9,
+        },
+        headStyles: {
+          fillColor: [33, 150, 243], // biru
+          textColor: 255,
+        },
+      });
+
+      doc.save("laporan-surat.pdf");
+    };
+
+    logoImg.onerror = () => {
+      Swal.fire("Gagal", "Gagal memuat logo. Pastikan path /Logo.png benar.", "error");
+    };
+  };
+
+
   const handlePrint = () => {
+    const filteredData = getFilteredSuratData();
+
+    let title = "Laporan Surat ";
+    if (filterJenisSurat === "all") title += "Masuk & Keluar";
+    else if (filterJenisSurat === "masuk") title += "Masuk";
+    else if (filterJenisSurat === "keluar") title += "Keluar";
+
     const printWindow = window.open("", "_blank");
     const html = `
-      <html>
-        <head>
-          <title>Cetak Laporan Surat</title>
-          <style>
-            body { font-family: Arial, sans-serif; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .header img { width: 50px; height: auto; margin-bottom: 10px; }
-            .header h2, .header h3 { margin: 0; font-family: Arial, sans-serif; }
-            .header p { margin: 5px 0; }
-            .border-top { border-top: 2px solid #000; margin: 10px 0; }
-            .date-location { margin-bottom: 20px; text-align: right; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #000; padding: 5px; text-align: center; }
-            .bold { font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <img src="/Logo.png" alt="Logo" />
-            <h2 style="font-family: Arial, sans-serif;">PEMERINTAH KABUPATEN PURBALINGGA</h2>
-            <h3 class="bold" style="font-family: Arial, sans-serif;">KECAMATAN BOJONGSARI</h3>
-            <p>Jalan Kutabaru I Nomor 1 Telp. (0281) 6597070</p>
-            <p>BOJONGSARI - PURBALINGGA</p>
-            <div class="border-top"></div>
+  <html>
+    <head>
+      <title>Cetak Laporan Surat</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 20px;
+        }
+        .header-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 10px;
+          gap: 10px;
+        }
+        .logo img {
+          width: 70px;
+          height: auto;
+        }
+        .kop {
+          text-align: center;
+        }
+        .kop h2, .kop h3 {
+          margin: 0;
+        }
+        .kop p {
+          margin: 2px 0;
+        }
+        .bold {
+          font-weight: bold;
+        }
+        .border-top {
+          border-top: 2px solid #000;
+          margin: 10px 0 20px 0;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        th, td {
+          border: 1px solid #000;
+          padding: 5px;
+          text-align: center;
+          font-size: 12px;
+        }
+        @media print {
+          @page {
+            size: portrait;
+            margin: 20mm;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header-container">
+        <div class="logo">
+          <img src="/Logo.png" alt="Logo" />
+        </div>
+        <div class="kop">
+          <h2>PEMERINTAH KABUPATEN PURBALINGGA</h2>
+          <h3 class="bold">KECAMATAN BOJONGSARI</h3>
+          <p>Jalan Kutabaru I Nomor 1 Telp. (0281) 6597070</p>
+          <p>BOJONGSARI - PURBALINGGA</p>
+        </div>
+      </div>
+      <div class="border-top"></div>
+      <h3 style="text-align: center; margin-bottom: 20px;">${title}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Jenis</th>
+            <th>Nomor</th>
+            <th>Tanggal</th>
+            <th>Pengirim/Penerima</th>
+            <th>Perihal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredData.length > 0
+        ? filteredData
+          .map(
+            (item, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${item.type === 'masuk' ? 'Surat Masuk' : 'Surat Keluar'}</td>
+                <td>${item.noSurat}</td>
+                <td>${dayjs(item.tglSurat).format("YYYY-MM-DD")}</td>
+                <td>${item.type === 'masuk' ? item.pengirim : item.tujuan}</td>
+                <td>${item.perihal}</td>
+              </tr>`
+          )
+          .join("")
+        : `<tr><td colspan="6" style="text-align:center;">Tidak ada data</td></tr>`
+      }
+        </tbody>
+      </table>
+    </body>
+  </html>
+`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  return (
+    <div className="flex flex-col h-screen p-3">
+      <div>
+        <h2 className="text-2xl font-bold">Laporan Surat</h2>
+        <p className="text-sm text-gray-500">Manajemen laporan surat masuk dan keluar</p>
+      </div>
+
+      <div className="flex flex-col w-full mt-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <label className="text-sm font-medium">Show</label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(parseInt(e.target.value))}
+              className="select select-bordered"
+            >
+              {[5, 10, 25, 50].map((num) => (
+                <option key={num} value={num}>
+                  {num}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm">entries</span>
           </div>
-          <h3 style="text-align: center; margin-bottom: 20px;">Laporan Surat Masuk & Keluar</h3>
-          <table>
-            <thead>
+
+          {/* Tambah pilihan filter jenis surat */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <label className="text-sm font-medium">Jenis Surat</label>
+            <select
+              value={filterJenisSurat}
+              onChange={(e) => setFilterJenisSurat(e.target.value)}
+              className="select select-bordered"
+            >
+              <option value="all">Semua</option>
+              <option value="masuk">Surat Masuk</option>
+              <option value="keluar">Surat Keluar</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch gap-2 w-full md:w-auto">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="input input-bordered"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="input input-bordered"
+            />
+            <input
+              type="text"
+              placeholder="Cari nomor/perihal/pengirim/penerima..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full max-w-xs input input-bordered"
+            />
+            <button onClick={handleExportPDF} className="btn btn-error w-full sm:w-auto">
+              Export PDF
+            </button>
+            <button onClick={handlePrint} className="btn btn-primary w-full sm:w-auto">
+              Cetak
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="table table-zebra">
+            <thead className="text-white bg-blue-500">
               <tr>
                 <th>No</th>
                 <th>Jenis</th>
@@ -108,144 +350,97 @@ const LaporanSuratPage = () => {
               </tr>
             </thead>
             <tbody>
-              ${
-                filteredData.length > 0
-                  ? filteredData
-                      .map(
-                        (item, index) => `
+              {loading ? (
                 <tr>
-                  <td>${index + 1}</td>
-                  <td>${item.jenis}</td>
-                  <td>${item.nomor}</td>
-                  <td>${item.tanggal}</td>
-                  <td>${item.pengirim || item.penerima || "-"}</td>
-                  <td>${item.perihal}</td>
-                </tr>`
-                      )
-                      .join("")
-                  : `<tr><td colspan="6" style="text-align:center;">Tidak ada data</td></tr>`
-              }
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.print();
-  };
-  
-  
-  
-  return (
-    <div className="p-6">
-      <button
-        onClick={() => navigate("/")}
-        className="px-4 py-2 mb-4 text-white bg-gray-600 rounded hover:bg-gray-700"
-      >
-        ← Kembali ke Beranda
-      </button>
-  
-      <h2 className="mb-4 text-2xl font-semibold">Laporan Surat Masuk & Surat Keluar Kecamatan Bojongsari</h2>
-  
-
-      <div className="flex flex-wrap gap-4 mb-4">
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="p-2 border rounded"
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="p-2 border rounded"
-        />
-        <input
-          type="text"
-          placeholder="Cari nomor/perihal/pengirim/penerima..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 p-2 border rounded"
-        />
-        <button
-          onClick={handleExportPDF}
-          className="px-4 py-2 text-white bg-red-600 rounded"
-        >
-          Export PDF
-        </button>
-        <button
-          onClick={handlePrint}
-          className="px-4 py-2 text-white bg-blue-600 rounded"
-        >
-          Cetak
-        </button>
-      </div>
-
-      <table className="min-w-full bg-white border rounded">
-        <thead>
-        <tr className="text-white bg-green-500">
-          <th className="px-4 py-2 border">No</th>
-          <th className="px-4 py-2 border">Jenis</th>
-          <th className="px-4 py-2 border">Nomor</th>
-          <th className="px-4 py-2 border">Tanggal</th>
-          <th className="px-4 py-2 border">Pengirim/Penerima</th>
-          <th className="px-4 py-2 border">Perihal</th>
-         </tr>
-        </thead>
-        <tbody>
-          {filteredData.length > 0 ? (
-            filteredData.map((item, index) => (
-              <tr
-                key={item.id}
-                onClick={() => setSelectedSuratId(item.id)}
-                className="cursor-pointer hover:bg-gray-100"
-              >
-                <td className="px-4 py-2 border">{index + 1}</td>
-                <td className="px-4 py-2 border">{item.jenis}</td>
-                <td className="px-4 py-2 border">{item.nomor}</td>
-                <td className="px-4 py-2 border">{dayjs(item.tanggal).format("YYYY-MM-DD")}</td>
-                <td className="px-4 py-2 border">{item.pengirim || item.penerima || "-"}</td>
-                <td className="px-4 py-2 border">{item.perihal}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td className="px-4 py-2 text-center border" colSpan="6">Tidak ada data</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {selectedSuratId && (
-        <div className="mt-6">
-          <h3 className="mb-2 text-xl font-semibold">Disposisi Surat</h3>
-          <table className="min-w-full bg-white border rounded">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="px-4 py-2 border">Tujuan</th>
-                <th className="px-4 py-2 border">Isi</th>
-                <th className="px-4 py-2 border">Tanggal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sampleDisposisi.filter((d) => d.suratId === selectedSuratId).map((d, i) => (
-                <tr key={i}>
-                  <td className="px-4 py-2 border">{d.tujuan}</td>
-                  <td className="px-4 py-2 border">{d.isi}</td>
-                  <td className="px-4 py-2 border">{dayjs(d.tanggal).format("YYYY-MM-DD")}</td>
+                  <td colSpan="6" className="text-center">
+                    Loading...
+                  </td>
                 </tr>
-              ))}
-              {sampleDisposisi.filter((d) => d.suratId === selectedSuratId).length === 0 && (
+              ) : suratData.length > 0 ? (
+                getFilteredSuratData().map((item, index) => (
+                  <tr
+                    key={`${item.type}-${item.id}-${index}`}
+                    onClick={() => {
+                      setSelectedSuratId(item.noSurat);
+                      setSelectedSurat(item);
+                    }}
+                    className="cursor-pointer hover:bg-gray-100"
+                  >
+                    <th>{index + 1}</th>
+                    <td>
+                      <span
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${item.type === "masuk"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-green-100 text-green-800"
+                          }`}
+                      >
+                        {item.type === "masuk" ? "Surat Masuk" : "Surat Keluar"}
+                      </span>
+                    </td>
+                    <td>{item.noSurat}</td>
+                    <td>{dayjs(item.tglSurat).format("YYYY-MM-DD")}</td>
+                    <td>{item.type === "masuk" ? item.pengirim : item.tujuan}</td>
+                    <td>{item.perihal}</td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td className="px-4 py-2 text-center border" colSpan="3">Tidak ada data disposisi</td>
+                  <td className="text-center" colSpan="6">
+                    Tidak ada data
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
+          <div className="flex justify-end w-full mt-4">
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              onPageChange={(newPage) => setCurrentPage(newPage)}
+            />
+          </div>
         </div>
-      )}
+
+        {selectedSurat && (
+          <div className="mt-6">
+            <h3 className="mb-2 text-xl font-semibold">Disposisi Surat</h3>
+            <div className="overflow-x-auto">
+              <table className="table table-zebra">
+                <thead className="text-white bg-blue-500">
+                  <tr>
+                    <th>No</th>
+                    <th>Tujuan</th>
+                    <th>Isi Disposisi</th>
+                    <th>Keterangan</th>
+                    <th>Sifat</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedSurat.disposisi || []).length > 0 ? (
+                    selectedSurat.disposisi.map((disposisi, index) => (
+                      <tr key={disposisi.id}>
+                        <th>{index + 1}</th>
+                        <td>{disposisi.tujuan}</td>
+                        <td>{disposisi.isiDisposisi}</td>
+                        <td>{disposisi.keterangan}</td>
+                        <td>{disposisi.sifat}</td>
+                        <td>{disposisi.status}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="text-center" colSpan="6">
+                        Tidak ada disposisi untuk surat ini.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

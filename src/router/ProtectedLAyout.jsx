@@ -8,8 +8,8 @@ function ProtectedLayout({ children }) {
   useEffect(() => {
     const token = sessionStorage.getItem("token");
     if (!token) {
-      setIsAuthenticated(false); 
-      navigate("/login");        
+      setIsAuthenticated(false);
+      navigate("/login");
     }
   }, [navigate]);
 

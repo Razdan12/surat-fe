@@ -1,351 +1,504 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Plus,
-  Edit,
-  Trash2,
-  FilePlus,
-  X,
-  ArrowLeft,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
+  createSuratMasukAPI,
+  deleteSuratMasukAPI,
+  getSuratMasukAllAPI,
+  updateSuratMasukAPI,
+  downloadSuratMasukAPI,
+} from "../middleware/SuratMasuk";
+import dayjs from "dayjs";
+import jsPDF from "jspdf";
+import Pagination from "../components/Pagination";
+import Modal, { closeModal, openModal } from "../components/Modal";
+import Swal from "sweetalert2";
+import { FaEdit, FaTrash, FaFileDownload, FaRegFilePdf } from "react-icons/fa";
 
-const SuratMasukPage = () => {
-  const navigate = useNavigate();
+const SuratMasuk = () => {
+  const [suratMasuk, setSuratMasuk] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentSurat, setCurrentSurat] = useState(null);
+  const apiUrl = import.meta.env.VITE_REACT_API_URL || 'http://localhost:9090';
 
-  const [suratMasuk, setSuratMasuk] = useState([
-    {
-      id: 1,
-      noAgenda: "G-01",
-      tglDiterima: "2023-01-20",
-      instansi: "UKM Sejahtera",
-      perihal: "Undangan Pelantikan Pengurus Besar",
-      file: null,
-    },
-  ]);
-  const [disposisi, setDisposisi] = useState([]);
+  useEffect(() => {
+    fetchSuratMasuk();
+  }, [search, currentPage, itemsPerPage]);
 
-  const [showForm, setShowForm] = useState(false);
-  const [showNotif, setShowNotif] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [entriesToShow, setEntriesToShow] = useState(10);
-  const [formData, setFormData] = useState({
-    noSurat: "",
-    tglSurat: "",
-    tglDiterima: "",
-    instansi: "",
-    noAgenda: "",
-    klasifikasi: "",
-    perihal: "",
-    lampiran: "",
-    status: "",
-    sifat: "",
-    file: null,
-  });
+  // Fetch list
+  const fetchSuratMasuk = async () => {
+    setLoading(true);
+    try {
+      const payload = `limit=${itemsPerPage}&page=${currentPage}&search=perihal:${search}`;
+      const response = await getSuratMasukAllAPI(payload);
 
-  const handleChange = (e) => {
-    const { name, value, type, files } = e.target;
-    setFormData({ ...formData, [name]: type === "file" ? files[0] : value });
+      // jika backend bungkus data di .data.data
+      const raw = response.data ?? response;
+      const meta = raw.data ?? raw;
+
+      setSuratMasuk(meta.items || []);
+      setTotalPages(meta.total_pages || 0);
+    } catch (err) {
+      console.error("Error fetching surat masuk:", err);
+      Swal.fire("Gagal", "Tidak bisa mengambil data surat.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = () => {
-    const requiredFields = ["noSurat", "tglSurat", "tglDiterima", "instansi"];
-    for (let field of requiredFields) {
-      if (!formData[field]) {
-        alert("Harap lengkapi semua field wajib!");
-        return;
+  // Create
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+
+    try {
+      const newSurat = await createSuratMasukAPI(formData);
+      setSuratMasuk((prev) => [newSurat, ...prev]);
+      await fetchSuratMasuk();
+      e.target.reset();
+      closeModal("add-surat");
+      Swal.fire("Berhasil", "Surat berhasil ditambahkan.", "success");
+    } catch (error) {
+      const response = error.response;
+      const status = response?.status;
+      const payload = response?.data || {};
+
+      console.error("CREATE ERROR RESPONSE:", status, payload);
+
+      let html;
+      if (status === 422) {
+        if (Array.isArray(payload.data)) {
+          html = payload.data.join("<br/>");
+        } else if (payload.errors) {
+          html = Object.entries(payload.errors)
+            .map(([f, msgs]) => `<strong>${f}</strong>: ${msgs.join(", ")}`)
+            .join("<br/>");
+        } else {
+          html = payload.message || "Validasi gagal";
+        }
+      } else {
+        html = payload.message || error.message;
+      }
+
+      Swal.fire({
+        icon: "error",
+        title: status === 422 ? "Validasi gagal" : `Error ${status}`,
+        html,
+      });
+    }
+  };
+
+  // Update
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const id = parseInt(formData.get("id"));
+
+    try {
+      await updateSuratMasukAPI(id, formData);
+      Swal.fire("Berhasil", "Surat berhasil diperbarui.", "success");
+      form.reset();
+      setCurrentSurat(null);
+      closeModal("edit-surat");
+      await fetchSuratMasuk();
+    } catch (error) {
+      console.error("Gagal update surat:", error);
+      Swal.fire("Gagal", "Terjadi kesalahan saat mengupdate surat.", "error");
+    }
+  };
+
+  // Delete
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: "Yakin ingin menghapus surat ini?",
+      text: "Data yang dihapus tidak dapat dikembalikan!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Batal",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteSuratMasukAPI(id);
+        await fetchSuratMasuk(); // Refresh the list after successful delete
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil!",
+          text: "Surat berhasil dihapus.",
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } catch (error) {
+        console.error("Gagal menghapus surat:", error);
+        const errorMessage = error.response?.data?.message || error.message || "Terjadi kesalahan saat menghapus surat.";
+        Swal.fire({
+          icon: "error",
+          title: "Gagal!",
+          text: errorMessage,
+        });
       }
     }
-  
-    const newSurat = {
-      id: suratMasuk.length + 1,
-      ...formData,
-      fileUrl: formData.file ? URL.createObjectURL(formData.file) : null,
-    };
-  
-    setSuratMasuk([...suratMasuk, newSurat]);
-  
-    // Tambahkan otomatis ke disposisi
-    const newDisposisi = {
-      id: disposisi.length + 1,
-      suratId: newSurat.id,
-      noAgenda: newSurat.noAgenda,
-      instansi: newSurat.instansi,
-      perihal: newSurat.perihal,
-      status: "Belum diproses",
-    };
-    setDisposisi([...disposisi, newDisposisi]);
-  
-    // Reset form
-    setFormData({
-      noSurat: "",
-      tglSurat: "",
-      tglDiterima: "",
-      instansi: "",
-      noAgenda: "",
-      klasifikasi: "",
-      perihal: "",
-      lampiran: "",
-      status: "",
-      sifat: "",
-      file: null,
-    });
-  
-    setShowForm(false);
-    setShowNotif(true);
-    setTimeout(() => setShowNotif(false), 3000);
-  };
-  
-  const handleEdit = (id) => {
-    const suratToEdit = suratMasuk.find((item) => item.id === id);
-    setFormData(suratToEdit);
-    setShowForm(true);
   };
 
-  const handleDelete = (id) => {
-    const updatedSurat = suratMasuk.filter((item) => item.id !== id);
-    setSuratMasuk(updatedSurat);
+  // Generate PDF for a single surat in official letter format
+  const handleDownloadSuratPDF = (surat) => {
+    const doc = new jsPDF();
+    // Header
+    doc.setFontSize(12);
+    doc.text("PEMERINTAH KABUPATEN PURBALINGGA", 105, 18, { align: "center" });
+    doc.setFont(undefined, "bold");
+    doc.text("KECAMATAN BOJONGSARI", 105, 26, { align: "center" });
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(10);
+    doc.text("Jalan Kutabaru I Nomor 1 Telp. (0281) 6597070", 105, 32, { align: "center" });
+    doc.text("BOJONGSARI - PURBALINGGA", 105, 37, { align: "center" });
+    doc.line(20, 40, 190, 40);
+    doc.setFontSize(11);
+    // Tanggal dan tujuan
+    doc.text(`Bojongsari, ${surat.tglSurat ? dayjs(surat.tglSurat).format("D MMMM YYYY") : "-"}`, 150, 48);
+    doc.text("Yth. Bupati Purbalingga", 130, 56);
+    doc.text("Cq. Kepala Dinas Pemberdayaan", 130, 62);
+    doc.text("Masyarakat Dan Desa Kab. Purbalingga", 130, 68);
+    doc.text("Di -", 130, 74);
+    doc.text("PURBALINGGA", 130, 80);
+    // Nomor, Lampiran, Perihal
+    doc.text(`Nomor    : ${surat.noSurat || "-"}`, 20, 56);
+    doc.text(`Lampiran : ${surat.lampiran ? "1 (satu) bendel" : "-"}`, 20, 62);
+    doc.text(`Perihal  : ${surat.perihal || "-"}`, 20, 68);
+    // Isi surat
+    let isi = `Berdasarkan surat dari Kepala Desa ...\n\nSehubungan dengan hal tersebut, kami sampaikan usulan anggota BPD antar waktu sebagaimana data terlampir.\n\nDemikian usulan anggota BPD antar waktu untuk dapat diproses lebih lanjut.`;
+    doc.setFontSize(11);
+    doc.text(isi, 20, 92, { maxWidth: 170 });
+    // Ttd
+    doc.text("CAMAT BOJONGSARI", 140, 170);
+    doc.text("(Nama Camat)", 140, 185);
+    doc.text("NIP: 198203222000122002", 140, 190);
+    // Stempel (optional: you can add an image if you have a base64 logo)
+    // doc.addImage(...)
+    doc.save(`Surat-${surat.noSurat || surat.id}.pdf`);
   };
 
-  const filteredSurat = suratMasuk.filter((item) =>
-    [item.instansi, item.perihal, item.noAgenda]
-      .join(" ")
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  );
+  // Update download function
+  const handleDownloadLampiran = async (filename) => {
+    try {
+      const response = await downloadSuratMasukAPI(filename);
 
-  const displayedSurat = filteredSurat.slice(0, entriesToShow);
+      // Create a blob from the response data
+      const blob = new Blob([response.data], { type: response.headers['content-type'] });
+
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+
+      // Append to body, click and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the URL
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Download Failed',
+        text: 'Failed to download file. Please try again.',
+      });
+    }
+  };
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 bg-gray-50">
-      {/* Tombol Navigasi dan Tambah */}
-      <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center px-4 py-2 text-white transition duration-200 bg-gray-500 rounded hover:bg-gray-600"
-        >
-          <ArrowLeft className="mr-2" size={18} />
-          Kembali ke Beranda
-        </button>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center px-4 py-2 text-white transition duration-200 bg-green-600 rounded hover:bg-green-700"
-        >
-          <Plus className="mr-2" size={18} />
-          Tambah
-        </button>
+    <div className="flex flex-col h-screen p-3">
+      <div>
+        <h2 className="text-2xl font-bold">Data Surat Masuk</h2>
+        <p className="text-sm text-gray-500">Manajemen surat masuk</p>
       </div>
-
-      {/* Kontrol Filter dan Jumlah Tampil */}
-      <div className="flex flex-col justify-between gap-4 mb-4 sm:flex-row sm:items-center">
-        <div>
-          <label className="mr-2 text-sm font-medium">Show</label>
-          <select
-            value={entriesToShow}
-            onChange={(e) => setEntriesToShow(parseInt(e.target.value))}
-            className="p-2 border rounded"
-          >
-            {[5, 10, 25, 50].map((num) => (
-              <option key={num} value={num}>
-                {num}
-              </option>
-            ))}
-          </select>
-          <span className="ml-2 text-sm">entries</span>
-        </div>
-        <input
-          type="text"
-          placeholder="Cari surat..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-2 border rounded sm:w-1/3"
-        />
-      </div>
-
-      {/* Tabel Surat Masuk */}
-      <div className="overflow-x-auto bg-white rounded shadow">
-        <table className="min-w-full text-sm text-left table-auto">
-          <thead className="text-white bg-blue-600">
-            <tr>
-              <th className="p-3">No.</th>
-              <th className="p-3">Agenda</th>
-              <th className="p-3">Tgl. Diterima</th>
-              <th className="p-3">Instansi</th>
-              <th className="p-3">Perihal</th>
-              <th className="p-3">Dokumen</th>
-              <th className="p-3 text-center">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedSurat.map((item, index) => (
-              <tr key={item.id} className="border-t">
-                <td className="p-3">{index + 1}</td>
-                <td className="p-3">{item.noAgenda}</td>
-                <td className="p-3">{item.tglDiterima}</td>
-                <td className="p-3">{item.instansi}</td>
-                <td className="p-3">{item.perihal}</td>
-                <td className="p-3">
-                  {item.fileUrl ? (
-                    <a
-                      href={item.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      Lihat File
-                    </a>
-                  ) : (
-                    "Belum diupload"
-                  )}
-                </td>
-                <td className="flex items-center justify-center p-3 space-x-2">
-                  <button
-                    className="text-blue-500 transition duration-200 hover:text-blue-700"
-                    onClick={() => handleEdit(item.id)}
-                  >
-                    <Edit size={18} />
-                  </button>
-                  <button
-                    className="text-red-500 transition duration-200 hover:text-red-700"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Notifikasi Simpan */}
-      {showNotif && (
-        <div className="fixed px-4 py-2 text-sm text-white bg-green-600 rounded shadow-md bottom-4 right-4 animate-bounce">
-          Surat berhasil disimpan!
-        </div>
-      )}
-
-      {/* Form Tambah Surat */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="w-full h-full max-w-2xl p-6 overflow-y-auto bg-white rounded-lg shadow-lg sm:h-auto sm:max-w-2xl">
-            <div className="flex items-center justify-between pb-2 mb-4 border-b">
-              <h3 className="flex items-center gap-2 text-xl font-semibold">
-                <FilePlus size={20} />
-                Tambah Surat Masuk
-              </h3>
-              <button onClick={() => setShowForm(false)}>
-                <X />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <h4 className="text-sm font-bold text-gray-700 uppercase">
-                  Informasi Umum
-                </h4>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  {[
-                    { label: "No. Surat", name: "noSurat", type: "text" },
-                    { label: "Tgl. Surat", name: "tglSurat", type: "date" },
-                    { label: "Diterima Tgl.", name: "tglDiterima", type: "date" },
-                    { label: "Instansi", name: "instansi", type: "text" },
-                    { label: "No. Agenda", name: "noAgenda", type: "text" },
-                    { label: "Klasifikasi", name: "klasifikasi", type: "text" },
-                  ].map(({ label, name, type }) => (
-                    <div key={name}>
-                      <label className="text-sm font-semibold">{label}</label>
-                      <input
-                        type={type}
-                        name={name}
-                        value={formData[name]}
-                        onChange={handleChange}
-                        className="w-full p-2 mt-1 border rounded"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold">Perihal</label>
-                <textarea
-                  name="perihal"
-                  value={formData.perihal}
-                  onChange={handleChange}
-                  className="w-full p-2 mt-1 border rounded"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div>
-                  <label className="text-sm font-semibold">Lampiran</label>
-                  <input
-                    type="text"
-                    name="lampiran"
-                    value={formData.lampiran}
-                    onChange={handleChange}
-                    className="w-full p-2 mt-1 border rounded"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-semibold">Status</label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                    className="w-full p-2 mt-1 border rounded"
-                  >
-                    <option value="">--Status--</option>
-                    <option value="Sudah dibaca">Sudah dibaca</option>
-                    <option value="Belum dibaca">Belum dibaca</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold">Sifat</label>
-                  <select
-                    name="sifat"
-                    value={formData.sifat}
-                    onChange={handleChange}
-                    className="w-full p-2 mt-1 border rounded"
-                  >
-                    <option value="">--Sifat--</option>
-                    <option value="Biasa">Biasa</option>
-                    <option value="Penting">Penting</option>
-                    <option value="Segera">Segera</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold">Unggah File</label>
-                <input
-                  type="file"
-                  name="file"
-                  onChange={handleChange}
-                  className="w-full p-2 mt-1 border rounded"
-                />
-              </div>
-
-              <div className="flex justify-end mt-6 space-x-4">
-                <button
-                  className="px-4 py-2 text-white transition duration-200 bg-gray-500 rounded hover:bg-gray-600"
-                  onClick={() => setShowForm(false)}
-                >
-                  Tutup
-                </button>
-                <button
-                  className="px-4 py-2 text-white transition duration-200 bg-blue-600 rounded hover:bg-blue-700"
-                  onClick={handleSubmit}
-                >
-                  Simpan
-                </button>
-              </div>
-            </div>
+      <div className="flex flex-col w-full mt-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <label className="mr-2 text-sm font-medium">Show</label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(parseInt(e.target.value))}
+              className="p-2 border rounded"
+            >
+              {[5, 10, 25, 50].map((num) => (
+                <option key={num} value={num}>
+                  {num}
+                </option>
+              ))}
+            </select>
+            <span className="ml-2 text-sm">entries</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Search perihal..."
+              className="w-full max-w-xs mr-2 input input-bordered"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button
+              className="btn btn-success"
+              onClick={() => openModal("add-surat")}
+            >
+              tambah
+            </button>
           </div>
         </div>
-      )}
+        <div className="overflow-x-auto">
+          <table className="table table-zebra">
+            <thead className="text-white bg-blue-500">
+              <tr>
+                <th>No</th>
+                <th>Nomor Surat</th>
+                <th>Perihal</th>
+                <th>Tanggal Surat</th>
+                <th>Tanggal Diterima</th>
+                <th>Pengirim</th>
+                <th>Klasifikasi</th>
+                <th>Lampiran</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {suratMasuk?.map((surat, index) => (
+                <tr key={surat.id}>
+                  <th>{index + 1}</th>
+                  <td>{surat.noSurat}</td>
+                  <td>{surat.perihal}</td>
+                  <td>{surat.tglSurat ? new Date(surat.tglSurat).toLocaleDateString() : "-"}</td>
+                  <td>{surat.tglDiterima ? new Date(surat.tglDiterima).toLocaleDateString() : "-"}</td>
+                  <td>{surat.pengirim}</td>
+                  <td>{surat.klasifikasi || "-"}</td>
+                  <td>
+                    {surat.lampiran && surat.lampiran.endsWith(".pdf") ? (
+                      <button
+                        onClick={() => handleDownloadLampiran(surat.lampiran)}
+                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                      >
+                        <FaFileDownload />
+                        <span>Unduh</span>
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                  <td>
+                    <button
+                      className="text-xl text-orange-500 btn btn-sm btn-ghost"
+                      onClick={() => {
+                        setCurrentSurat(surat);
+                        openModal("edit-surat");
+                        const form = document.querySelector(`#edit-surat form`);
+                        if (form) {
+                          Object.keys(surat).forEach((key) => {
+                            const input = form.elements[key];
+                            if (input) {
+                              if (input.type === 'date') {
+                                // Format date for date inputs
+                                input.value = surat[key] ? new Date(surat[key]).toISOString().split('T')[0] : '';
+                              } else {
+                                input.value = surat[key] || '';
+                              }
+                            }
+                          });
+                        }
+                      }}
+                    >
+                      <FaEdit />
+                    </button>
+                    <button
+                      className="text-xl text-red-500 btn btn-sm btn-ghost"
+                      onClick={() => handleDelete(surat.id)}
+                    >
+                      <FaTrash />
+                    </button>
+                    <button
+                      className="text-xl text-blue-700 btn btn-sm btn-ghost"
+                      title="Download Surat PDF"
+                      onClick={() => handleDownloadSuratPDF(surat)}
+                    >
+                      <FaRegFilePdf />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="flex justify-end w-full mt-4">
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              onPageChange={(newPage) => setCurrentPage(newPage)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <Modal id={"add-surat"}>
+        <div>
+          <h2 className="text-xl font-bold">Tambah Surat Masuk</h2>
+          <p className="text-sm text-gray-500">
+            Form untuk menambah surat masuk baru ke dalam sistem
+          </p>
+          <div>
+            <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-4" encType="multipart/form-data">
+              <input name="id" type="hidden" />
+              <div>
+                <label className="label">Nomor Surat</label>
+                <input name="noSurat" type="text" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Tanggal Surat</label>
+                <input name="tglSurat" type="date" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Tanggal Diterima</label>
+                <input name="tglDiterima" type="date" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Pengirim</label>
+                <input name="pengirim" type="text" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Nomor Agenda</label>
+                <input name="noAgenda" type="text" className="w-full input input-bordered" />
+              </div>
+              <div>
+                <label className="label">Klasifikasi</label>
+                <input name="klasifikasi" type="text" className="w-full input input-bordered" />
+              </div>
+              <div>
+                <label className="label">Perihal</label>
+                <input name="perihal" type="text" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Status</label>
+                <select name="status" className="w-full select select-bordered" required>
+                  <option value="">Pilih Status</option>
+                  <option value="Sudah Dibaca">Sudah Dibaca</option>
+                  <option value="Belum Dibaca">Belum Dibaca</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Sifat</label>
+                <select name="sifatSurat" className="w-full select select-bordered" required>
+                  <option value="">Pilih Sifat</option>
+                  <option value="Biasa">Biasa</option>
+                  <option value="Penting">Penting</option>
+                  <option value="Sangat Penting">Sangat Penting</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="label">Lampiran (file)</label>
+                <input name="lampiran" type="file" className="w-full file-input file-input-bordered" />
+              </div>
+              <div className="col-span-2">
+                <div className="flex justify-end mt-4">
+                  <button type="submit" className="btn btn-primary">
+                    Simpan
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal id={"edit-surat"}>
+        <div>
+          <h2 className="text-xl font-bold">Edit Surat Masuk</h2>
+          <p className="text-sm text-gray-500">
+            Form untuk mengedit data surat masuk dalam sistem
+          </p>
+          <div>
+            <form onSubmit={handleUpdate} className="grid grid-cols-2 gap-4 mt-4" encType="multipart/form-data">
+              <input type="hidden" name="id" value={currentSurat?.id || ""} />
+              <input type="hidden" name="lampiranLama" value={currentSurat?.lampiran || ""} />
+              <div>
+                <label className="label">Nomor Surat</label>
+                <input name="noSurat" type="text" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Tanggal Surat</label>
+                <input name="tglSurat" type="date" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Tanggal Diterima</label>
+                <input name="tglDiterima" type="date" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Pengirim</label>
+                <input name="pengirim" type="text" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Nomor Agenda</label>
+                <input name="noAgenda" type="text" className="w-full input input-bordered" value={currentSurat?.noAgenda || ''} />
+              </div>
+              <div>
+                <label className="label">Klasifikasi</label>
+                <input name="klasifikasi" type="text" className="w-full input input-bordered" value={currentSurat?.klasifikasi || ''} />
+              </div>
+              <div>
+                <label className="label">Perihal</label>
+                <input name="perihal" type="text" className="w-full input input-bordered" required />
+              </div>
+              <div>
+                <label className="label">Status</label>
+                <select name="status" className="w-full select select-bordered" required>
+                  <option value="Belum Dibaca">Belum Dibaca</option>
+                  <option value="Sudah Dibaca">Sudah Dibaca</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Sifat</label>
+                <select name="sifatSurat" className="w-full select select-bordered" required>
+                  <option value="Biasa">Biasa</option>
+                  <option value="Penting">Penting</option>
+                  <option value="Sangat Penting">Sangat Penting</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="label">Lampiran (file)</label>
+                <input name="lampiran" type="file" className="w-full file-input file-input-bordered" />
+                {currentSurat?.lampiran && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDownloadLampiran(currentSurat.lampiran);
+                    }}
+                    className="inline-block mt-1 text-sm text-blue-500 hover:text-blue-700"
+                  >
+                    Lihat Lampiran Saat Ini
+                  </button>
+                )}
+              </div>
+              <div className="col-span-2">
+                <div className="flex justify-end mt-4">
+                  <button type="submit" className="btn btn-primary">
+                    Simpan
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
 
-export default SuratMasukPage;
+export default SuratMasuk;

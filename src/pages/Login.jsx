@@ -4,7 +4,6 @@ import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { User, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { loginAPI } from "../middleware/Auth";
 import Swal from "sweetalert2";
 import getErrorMessage from "../middleware/helper";
 import useAuthStore from "../hook/Auth.store";

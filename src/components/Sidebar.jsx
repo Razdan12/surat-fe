@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { RiCloseLargeFill } from "react-icons/ri";
+import { RiCloseLargeFill, RiLogoutBoxRLine } from "react-icons/ri";
 import { iconMapping } from "./IconMapping";
 import { Link } from "react-router-dom";
 
@@ -13,6 +13,11 @@ const Sidebar = ({ logo }) => {
   const handleMenuItemClick = (name) => {
     setActiveMenuItem(name);
     sessionStorage.setItem("side", name);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.clear(); // Bersihkan session
+    window.location.href = "/login"; // Redirect ke halaman login
   };
 
   useEffect(() => {
@@ -29,10 +34,10 @@ const Sidebar = ({ logo }) => {
             aria-label="close sidebar"
             className="drawer-overlay"
           />
-          <ul className="menu p-4 w-60 bg-blue-700 min-h-screen shadow top-0 sticky">
-            <div className="w-full flex justify-between mb-10 items-center pb-6">
-              <div className="flex justify-start items-start gap-1 w-full">
-                <p className="text-2xl text-white font-bold">ADMINISTRASI</p>
+          <ul className="sticky top-0 min-h-screen p-4 bg-blue-700 shadow menu w-60">
+            <div className="flex items-center justify-between w-full pb-6 mb-10">
+              <div className="flex items-start justify-start w-full gap-1">
+                <p className="text-2xl font-bold text-white">ADMINISTRASI</p>
               </div>
               <label
                 htmlFor="my-drawer-2"
@@ -41,7 +46,7 @@ const Sidebar = ({ logo }) => {
                 <RiCloseLargeFill />
               </label>
             </div>
-            <ul className="menu max-w-xs w-full text-white">
+            <ul className="w-full max-w-xs text-white menu">
               {data.map((item, index) => (
                 <React.Fragment key={`menu-${index}`}>
                   {item.subLabel && item.subLabel.length > 0 ? (
@@ -55,11 +60,10 @@ const Sidebar = ({ logo }) => {
                           {item.subLabel.map((subItem, subIndex) => (
                             <Link to={subItem.path} key={`link-${subIndex}`}>
                               <li
-                                className={`my-2 transition duration-200 ${
-                                  activeMenuItem === subItem.path
+                                className={`my-2 transition duration-200 ${activeMenuItem === subItem.path
                                     ? "bg-blue-800 font-bold rounded"
                                     : ""
-                                }`}
+                                  }`}
                                 onClick={() =>
                                   handleMenuItemClick(subItem.path)
                                 }
@@ -74,11 +78,10 @@ const Sidebar = ({ logo }) => {
                   ) : (
                     <Link to={item.path} key={`link-${index}`}>
                       <li
-                        className={`my-2 transition duration-200 ${
-                          activeMenuItem === item.path
-                            ? "bg-blue-800  rounded"
+                        className={`my-2 transition duration-200 ${activeMenuItem === item.path
+                            ? "bg-blue-800 rounded"
                             : ""
-                        }`}
+                          }`}
                         onClick={() => handleMenuItemClick(item.path)}
                       >
                         <div>
@@ -90,6 +93,17 @@ const Sidebar = ({ logo }) => {
                   )}
                 </React.Fragment>
               ))}
+
+              {/* Menu Logout */}
+              <li
+                className="my-2 transition duration-200 rounded cursor-pointer hover:bg-blue-800"
+                onClick={handleLogout}
+              >
+                <div className="flex items-center gap-2">
+                  <span><RiLogoutBoxRLine /></span>
+                  <p>Logout</p>
+                </div>
+              </li>
             </ul>
           </ul>
         </div>

@@ -9,13 +9,13 @@ import DisposisiSuratMasukPage from "../pages/DisposisiSuratMasukPage";
 import LaporanSuratPage from "../pages/LaporanSuratPage";
 import Users from "../pages/Users";
 import Layout from "../components/Layout";
+import Beranda from "../pages/Beranda"; // ✅ Pastikan file ini ada
 
 const Route = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
   },
-
   {
     path: "/",
     element: (
@@ -24,42 +24,36 @@ const Route = createBrowserRouter([
       </ProtectedLayout>
     ),
     children: [
-      
       {
-        path: "/users",
+        path: "", // ✅ Default path untuk root "/"
+        element: <Beranda />,
+      },
+      {
+        path: "users",
         element: <Users />,
       },
       {
-        path: "/surat-masuk",
+        path: "surat-masuk",
         element: <SuratMasukPage />,
       },
       {
-        path: "/surat-keluar",
+        path: "surat-keluar",
         element: <SuratKeluarPage />,
       },
       {
-        path: "/cetak/:id",
+        path: "cetak/:id",
         element: <CetakSuratPage />,
       },
       {
-        path: "/disposisi-surat-masuk",
+        path: "disposisi-surat-masuk",
         element: <DisposisiSuratMasukPage />,
       },
       {
-        path: "/laporan-surat",
+        path: "laporan-surat",
         element: <LaporanSuratPage />,
       },
     ],
   },
-
-  // {
-  //   path: "/",
-  //   element: (
-  //     <ProtectedLayout>
-  //       <Navbar />
-  //     </ProtectedLayout>
-  //   ),
-  // },
 ]);
 
 export default Route;

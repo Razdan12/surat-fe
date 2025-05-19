@@ -6,24 +6,20 @@ import { FaMoon } from 'react-icons/fa';
 
 const Navbar= () => {
   return (
-    <div className="navbar bg-blue-700 shadow-sm px-5">
+    <div className="px-5 bg-blue-700 shadow-sm navbar">
       <div className="navbar-start">
-        <label htmlFor="my-drawer-2" className="drawer-button lg:hidden text-xl cursor-pointer">
+        <label htmlFor="my-drawer-2" className="text-xl cursor-pointer drawer-button lg:hidden">
           <CiCircleList />
         </label>
        
       </div>
+            <div className="hidden navbar-center lg:flex">
+        <h1 className="text-lg font-semibold tracking-wide text-center text-white">
+          SISTEM INFORMASI MANAJEMEN ARSIP SURAT KECAMATAN BOJONGSARI
+        </h1>
+      </div>
+      <div className="gap-4 navbar-end">
 
-      <div className="navbar-end gap-4">
- 
-        <div className="avatar">
-          <div className="w-10 ring-primary ring-offset-base-100 rounded-full ring ring-offset-2">
-            <img
-              src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-              alt="avatar"
-            />
-          </div>
-        </div>
       </div>
     </div>
   );
