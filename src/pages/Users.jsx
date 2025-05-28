@@ -10,6 +10,7 @@ import Modal, { closeModal, openModal } from "../components/Modal";
 import Swal from "sweetalert2";
 import { FaEdit } from "react-icons/fa";
 import { FaTrash } from "react-icons/fa6";
+import getErrorMessage from "../middleware/helper";
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -65,7 +66,13 @@ const Users = () => {
       fetchUsers();
       closeModal("add-user");
     } catch (error) {
-      console.error("Error adding user:", error);
+      closeModal("add-user");
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: getErrorMessage(error),
+      });
+     
     }
   };
 
@@ -100,7 +107,13 @@ const Users = () => {
       fetchUsers();
       closeModal("edit-user");
     } catch (error) {
-      console.error("Error updating user:", error);
+       closeModal("edit-user");
+       Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: getErrorMessage(error),
+      });
+      
     }
   };
 
