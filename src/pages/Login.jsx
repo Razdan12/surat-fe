@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -27,26 +27,30 @@ const Login = () => {
     resolver: yupResolver(schema),
   });
 
-  const onSubmit = async (data) => {
-    try {
-      const rest = await login(data);
-      if (rest) {
-        Swal.fire({
-          position: "center",
-          icon: "success",
-          title: "Your work has been saved",
-          showConfirmButton: false,
-          timer: 1500,
-        });
-        navigate("/");
-      }
-    } catch (error) {
+  useEffect(() => {
+   
+    if (error) {
       Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: getErrorMessage(error, "Login failed. Please try again."),
+        text: getErrorMessage(error),
       });
     }
+  }, [error]);
+
+  const onSubmit = async (data) => {
+    const rest = await login(data);
+    if (rest) {
+      Swal.fire({
+        position: "center",
+        icon: "success",
+        title: "Your work has been saved",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+      navigate("/");
+    }
+    
   };
 
   return (

@@ -12,6 +12,7 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await loginAPI(credentials);
+    
       const { user, token } = response.data;
 
       set({
@@ -24,6 +25,7 @@ const useAuthStore = create((set) => ({
       localStorage.setItem('refresh', token.refresh_token);
       return user;
     } catch (error) {
+   
       set({
         error: getErrorMessage(error, 'failed. Please try again.'),
         isLoading: false,

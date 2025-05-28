@@ -54,6 +54,10 @@ const Users = () => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const newUser = Object.fromEntries(formData.entries());
+    if (!newUser.nip || newUser.nip.trim() === "") {
+      delete newUser.nip;
+    }
+
     try {
       await createUserAPI(newUser);
       setUsers((prevUsers) => [...prevUsers, newUser]);
@@ -182,7 +186,6 @@ const Users = () => {
                     >
                       <FaTrash />
                     </button>
-
                   </td>
                 </tr>
               ))}
@@ -244,7 +247,6 @@ const Users = () => {
                     name="nip"
                     type="number"
                     className="w-full input input-bordered"
-                    required
                   />
                 </div>
                 <div>

@@ -18,17 +18,19 @@ function extractCustomErrorMessage(errorData) {
 }
 
 function getErrorMessage(error, defaultErrorMessage = 'An unexpected error occurred') {
+  
   if (axios.isAxiosError(error)) {
     const errorData = error.response?.data;
-
+    
     return (
       errorData?.message ||
       extractCustomErrorMessage(errorData || {}) ||
       defaultErrorMessage
     );
   }
-
-  return error?.message || defaultErrorMessage;
+  
+  console.log('Error:', error );
+  return error || defaultErrorMessage;
 }
 
 export default getErrorMessage;
